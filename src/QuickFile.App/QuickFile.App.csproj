@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\QuickFile.Core\QuickFile.Core.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>QuickFile</AssemblyName>
+    <RootNamespace>QuickFile.App</RootNamespace>
+    <Product>QuickFile</Product>
+    <Title>QuickFile</Title>
+    <Description>Quick file actions, right from Windows File Explorer.</Description>
+    <Version>1.0.0</Version>
+    <Authors>Naveen-io</Authors>
+    <RepositoryUrl>https://github.com/Naveen-io/QuickFile</RepositoryUrl>
+  </PropertyGroup>
+
+</Project>

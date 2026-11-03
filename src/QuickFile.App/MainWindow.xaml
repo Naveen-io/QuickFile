@@ -1,0 +1,123 @@
+<Window x:Class="QuickFile.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="QuickFile Settings" 
+        Height="400" Width="480"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        Background="#F9F9F9"
+        Foreground="#1C1C1C"
+        FontFamily="Segoe UI Variable Text, Segoe UI, sans-serif">
+    
+    <Window.Resources>
+        <Style TargetType="Button">
+            <Setter Property="FontFamily" Value="Segoe UI Variable Display, Segoe UI, sans-serif"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="14,8"/>
+            <Setter Property="Margin" Value="0,4"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#D1D1D1"/>
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="Foreground" Value="#242424"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="5" SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#F3F3F3"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="#C0C0C0"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#E5E5E5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#0067C0"/>
+            <Setter Property="BorderBrush" Value="#005FB8"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="5" SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#187BD0"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#005A9E"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Text="QuickFile" FontSize="20" FontWeight="Bold" Foreground="#111111"/>
+            <TextBlock Text="Quick file actions, right from Windows File Explorer." FontSize="12" Foreground="#616161" Margin="0,2,0,0"/>
+        </StackPanel>
+
+        <!-- Status Card -->
+        <Border Grid.Row="1" Background="#FFFFFF" BorderBrush="#E5E5E5" BorderThickness="1" CornerRadius="6" Padding="16" Margin="0,0,0,16">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="Explorer Context Menu Integration" FontSize="13" FontWeight="SemiBold" Foreground="#242424"/>
+                    <TextBlock x:Name="TxtStatus" Text="Status: Checking..." FontSize="12" Foreground="#666666" Margin="0,3,0,0"/>
+                </StackPanel>
+                <Button x:Name="BtnToggle" Grid.Column="1" Content="Register" Style="{StaticResource PrimaryButton}" Click="BtnToggle_Click" VerticalAlignment="Center" MinWidth="110"/>
+            </Grid>
+        </Border>
+
+        <!-- Instructions Card -->
+        <Border Grid.Row="2" Background="#FFFFFF" BorderBrush="#E5E5E5" BorderThickness="1" CornerRadius="6" Padding="16">
+            <StackPanel>
+                <TextBlock Text="How It Works" FontSize="13" FontWeight="SemiBold" Foreground="#242424" Margin="0,0,0,8"/>
+                <TextBlock Text="1. Right-click any image file (.png, .jpg, .webp, .bmp) in Windows File Explorer." FontSize="12" Foreground="#424242" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                <TextBlock Text="2. Select QuickFile → choose Convert, Compress, Resize, or More actions." FontSize="12" Foreground="#424242" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                <TextBlock Text="3. Instant direct access on Windows 11 (bypasses 'Show more options')." FontSize="11" Foreground="#757575" TextWrapping="Wrap" Margin="0,4,0,8"/>
+                <TextBlock Text="• Zero background memory when idle (0 MB RAM / 0% CPU)." FontSize="11" Foreground="#0078D4" Margin="0,2"/>
+                <TextBlock Text="• Completely offline, no tracking, no accounts." FontSize="11" Foreground="#0078D4" Margin="0,2"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Footer -->
+        <Grid Grid.Row="3" Margin="0,16,0,0">
+            <Button Content="Create &amp; Right-Click Sample Image" HorizontalAlignment="Left" Click="BtnTestImage_Click" Padding="12,6" FontSize="12"/>
+            <Button Content="Close" HorizontalAlignment="Right" Click="BtnClose_Click" MinWidth="70" Padding="12,6" FontSize="12"/>
+        </Grid>
+    </Grid>
+</Window>
