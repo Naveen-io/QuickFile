@@ -33,3 +33,4 @@ $RECYCLE.BIN/
 ## Personal / Environment files
 *.DotSettings.user
 *.patch
+test_fixtures/

@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using SkiaSharp;
 
@@ -22,7 +23,7 @@ public static class ImageProcessor
 
         if (!overwrite && File.Exists(outputPath))
         {
-            outputPath = GenerateUniquePath(dir, $"{baseName}_converted", extension);
+            outputPath = FilePathHelper.GenerateUniquePath(dir, $"{baseName}_converted", extension);
         }
 
         return SaveEncodedImage(inputPath, outputPath, format, quality, overwrite);
@@ -36,7 +37,7 @@ public static class ImageProcessor
         }
 
         string ext = Path.GetExtension(inputPath).TrimStart('.').ToLowerInvariant();
-        string formatStr = targetFormat ?? (ext == "png" ? "webp" : ext); // Default to webp if png for meaningful compression, or keep original
+        string formatStr = targetFormat ?? (ext == "png" ? "webp" : (ext == "bmp" || ext == "tiff" ? "jpg" : ext));
         var format = ParseFormat(formatStr);
         string outExt = GetExtension(formatStr);
 
@@ -46,7 +47,7 @@ public static class ImageProcessor
 
         if (!overwrite && File.Exists(outputPath))
         {
-            outputPath = GenerateUniquePath(dir, $"{baseName}_compressed", outExt);
+            outputPath = FilePathHelper.GenerateUniquePath(dir, $"{baseName}_compressed", outExt);
         }
 
         return SaveEncodedImage(inputPath, outputPath, format, quality, overwrite);
@@ -75,15 +76,10 @@ public static class ImageProcessor
 
         if (!overwrite && File.Exists(outputPath))
         {
-            outputPath = GenerateUniquePath(dir, $"{baseName}_compressed", outExt);
+            outputPath = FilePathHelper.GenerateUniquePath(dir, $"{baseName}_compressed", outExt);
         }
 
-        using var inStream = File.OpenRead(inputPath);
-        using var codec = SKCodec.Create(inStream);
-        if (codec == null) throw new InvalidDataException("Unable to decode source image.");
-
-        using var originalBitmap = SKBitmap.Decode(codec);
-        if (originalBitmap == null) throw new InvalidDataException("Unable to decode bitmap pixels.");
+        using var originalBitmap = LoadBitmap(inputPath);
 
         // Binary search for quality (1..100)
         int low = 5;
@@ -96,7 +92,7 @@ public static class ImageProcessor
         try
         {
             double scale = 1.0;
-            for (int attempt = 0; attempt < 5; attempt++) // Max 5 scaling iterations if image is massive
+            for (int attempt = 0; attempt < 5; attempt++)
             {
                 if (scale < 1.0)
                 {
@@ -124,11 +120,11 @@ public static class ImageProcessor
                     {
                         bestQuality = mid;
                         bestData = data.ToArray();
-                        low = mid + 1; // Try higher quality
+                        low = mid + 1;
                     }
                     else
                     {
-                        high = mid - 1; // Quality too large, lower it
+                        high = mid - 1;
                     }
                 }
 
@@ -137,11 +133,9 @@ public static class ImageProcessor
                     break;
                 }
 
-                // If even quality 5 is too large, reduce resolution by 25%
                 scale *= 0.75;
             }
 
-            // Fallback if target was ridiculously tiny
             if (bestData == null)
             {
                 using var image = SKImage.FromBitmap(currentBitmap);
@@ -185,16 +179,10 @@ public static class ImageProcessor
 
         if (!overwrite && File.Exists(outputPath))
         {
-            outputPath = GenerateUniquePath(dir, $"{baseName}_resized", ext);
+            outputPath = FilePathHelper.GenerateUniquePath(dir, $"{baseName}_resized", ext);
         }
 
-        using var inStream = File.OpenRead(inputPath);
-        using var codec = SKCodec.Create(inStream);
-        if (codec == null) throw new InvalidDataException("Unable to decode source image.");
-
-        using var original = SKBitmap.Decode(codec);
-        if (original == null) throw new InvalidDataException("Unable to decode bitmap pixels.");
-
+        using var original = LoadBitmap(inputPath);
         using var resized = new SKBitmap(targetWidth, targetHeight);
         original.ScalePixels(resized, new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.Linear));
 
@@ -221,6 +209,7 @@ public static class ImageProcessor
         var fi = new FileInfo(filePath);
         int width = 0, height = 0;
         string formatName = fi.Extension.TrimStart('.').ToUpperInvariant();
+        bool hasAlpha = false;
 
         try
         {
@@ -231,9 +220,21 @@ public static class ImageProcessor
                 width = codec.Info.Width;
                 height = codec.Info.Height;
                 formatName = codec.EncodedFormat.ToString().ToUpperInvariant();
+                hasAlpha = codec.Info.AlphaType != SKAlphaType.Opaque;
             }
         }
-        catch { }
+        catch
+        {
+            // Fallback to FFprobe for TIFF or other formats
+            try
+            {
+                var probe = FFmpegHelper.ProbeFile(filePath);
+                width = probe.Width;
+                height = probe.Height;
+                formatName = probe.ContainerFormat;
+            }
+            catch { }
+        }
 
         return new ImageFileInfo(
             filePath,
@@ -242,8 +243,54 @@ public static class ImageProcessor
             fi.Length,
             width,
             height,
+            hasAlpha,
             fi.LastWriteTime
         );
+    }
+
+    private static SKBitmap LoadBitmap(string inputPath)
+    {
+        try
+        {
+            using var inStream = File.OpenRead(inputPath);
+            using var codec = SKCodec.Create(inStream);
+            if (codec != null)
+            {
+                var bmp = SKBitmap.Decode(codec);
+                if (bmp != null) return bmp;
+            }
+        }
+        catch { }
+
+        // Fallback: If Skia failed (e.g. specialized TIFF), use FFmpeg to convert to temporary PNG in memory
+        if (FFmpegHelper.IsFFmpegAvailable())
+        {
+            string tempPng = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.png");
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = FFmpegHelper.GetFFmpegPath(),
+                    Arguments = $"-y -i \"{inputPath}\" -vframes 1 \"{tempPng}\"",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+                using var p = Process.Start(psi);
+                p?.WaitForExit(5000);
+                if (File.Exists(tempPng))
+                {
+                    using var fs = File.OpenRead(tempPng);
+                    var bmp = SKBitmap.Decode(fs);
+                    if (bmp != null) return bmp;
+                }
+            }
+            finally
+            {
+                if (File.Exists(tempPng)) try { File.Delete(tempPng); } catch { }
+            }
+        }
+
+        throw new InvalidDataException($"Unable to decode image file: {Path.GetFileName(inputPath)}");
     }
 
     private static string SaveEncodedImage(string inputPath, string outputPath, SKEncodedImageFormat format, int quality, bool overwrite)
@@ -253,24 +300,44 @@ public static class ImageProcessor
 
         try
         {
-            using (var inStream = File.OpenRead(inputPath))
-            using (var codec = SKCodec.Create(inStream))
+            using var bitmap = LoadBitmap(inputPath);
+
+            // Handle transparency when target format does not support alpha (JPEG or BMP)
+            SKBitmap saveBmp = bitmap;
+            bool createdComposite = false;
+
+            if ((format == SKEncodedImageFormat.Jpeg || format == SKEncodedImageFormat.Bmp) &&
+                bitmap.AlphaType != SKAlphaType.Opaque)
             {
-                if (codec == null) throw new InvalidDataException("Unable to decode image.");
-                using (var bitmap = SKBitmap.Decode(codec))
+                var whiteBmp = new SKBitmap(bitmap.Width, bitmap.Height, SKColorType.Rgb888x, SKAlphaType.Opaque);
+                using (var canvas = new SKCanvas(whiteBmp))
                 {
-                    if (bitmap == null) throw new InvalidDataException("Failed to decode image data.");
-                    using (var image = SKImage.FromBitmap(bitmap))
-                    using (var encodedData = image.Encode(format, Math.Clamp(quality, 1, 100)))
-                    using (var outStream = File.Open(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
-                    {
-                        encodedData.SaveTo(outStream);
-                    }
+                    canvas.Clear(SKColors.White);
+                    canvas.DrawBitmap(bitmap, 0, 0, SKSamplingOptions.Default, null);
                 }
+                saveBmp = whiteBmp;
+                createdComposite = true;
             }
 
-            File.Move(tempPath, outputPath, overwrite);
-            return outputPath;
+            try
+            {
+                using var image = SKImage.FromBitmap(saveBmp);
+                using var encodedData = image.Encode(format, Math.Clamp(quality, 1, 100));
+                using (var outStream = File.Open(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                {
+                    encodedData.SaveTo(outStream);
+                }
+
+                File.Move(tempPath, outputPath, overwrite);
+                return outputPath;
+            }
+            finally
+            {
+                if (createdComposite)
+                {
+                    saveBmp.Dispose();
+                }
+            }
         }
         catch
         {
@@ -288,6 +355,8 @@ public static class ImageProcessor
         "jpg" or "jpeg" => SKEncodedImageFormat.Jpeg,
         "webp" => SKEncodedImageFormat.Webp,
         "bmp" => SKEncodedImageFormat.Bmp,
+        "gif" => SKEncodedImageFormat.Png, // Skia encodes single frame as PNG or WebP; for GIF format use Webp/PNG
+        "tiff" or "tif" => SKEncodedImageFormat.Png,
         _ => throw new NotSupportedException($"Target format '{format}' is not supported.")
     };
 
@@ -296,19 +365,8 @@ public static class ImageProcessor
         "jpeg" => ".jpg",
         var s => "." + s
     };
-
-    private static string GenerateUniquePath(string dir, string prefix, string ext)
-    {
-        int counter = 1;
-        string path;
-        do
-        {
-            path = Path.Combine(dir, $"{prefix} ({counter}){ext}");
-            counter++;
-        } while (File.Exists(path));
-        return path;
-    }
 }
+
 public record ImageFileInfo(
     string FullPath,
     string FileName,
@@ -316,16 +374,11 @@ public record ImageFileInfo(
     long SizeBytes,
     int Width,
     int Height,
+    bool HasAlpha,
     DateTime LastModified
 )
 {
-    public string FormattedSize => SizeBytes switch
-    {
-        < 1024 => $"{SizeBytes} B",
-        < 1024 * 1024 => $"{SizeBytes / 1024.0:F1} KB",
-        _ => $"{SizeBytes / (1024.0 * 1024.0):F2} MB"
-    };
-
+    public string FormattedSize => FilePathHelper.FormatFileSize(SizeBytes);
     public string Dimensions => Width > 0 && Height > 0 ? $"{Width} × {Height} px" : "Unknown";
     public string AspectRatio => Width > 0 && Height > 0 ? $"{(double)Width / Height:F2}:1" : "Unknown";
 }
