@@ -2,6 +2,8 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
+using System.Windows.Input;
+using System.Windows.Media;
 using QuickFile.Core;
 
 namespace QuickFile.App;
@@ -17,20 +19,35 @@ public partial class MainWindow : Window
         UpdateStatus();
     }
 
+    private void Header_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.LeftButton == MouseButtonState.Pressed)
+        {
+            DragMove();
+        }
+    }
+
+    private void BtnMinimize_Click(object sender, RoutedEventArgs e)
+    {
+        WindowState = WindowState.Minimized;
+    }
+
     private void UpdateStatus()
     {
         bool isRegistered = ShellManager.IsRegistered(_exePath);
         if (isRegistered)
         {
-            TxtStatus.Text = "Status: Active (Integrated into Explorer)";
-            TxtStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(16, 124, 65));
+            TxtStatus.Text = "Status: Active in File Explorer";
+            TxtStatus.Foreground = new SolidColorBrush(Color.FromRgb(16, 124, 65));
+            StatusDot.Fill = new SolidColorBrush(Color.FromRgb(16, 124, 65));
             BtnToggle.Content = "Unregister";
             BtnToggle.Style = (Style)FindResource(typeof(System.Windows.Controls.Button));
         }
         else
         {
-            TxtStatus.Text = "Status: Inactive (Not registered in Explorer)";
-            TxtStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(180, 0, 0));
+            TxtStatus.Text = "Status: Inactive (Click to Register)";
+            TxtStatus.Foreground = new SolidColorBrush(Color.FromRgb(196, 43, 28));
+            StatusDot.Fill = new SolidColorBrush(Color.FromRgb(196, 43, 28));
             BtnToggle.Content = "Register";
             BtnToggle.Style = (Style)FindResource("PrimaryButton");
         }
@@ -49,7 +66,7 @@ public partial class MainWindow : Window
             else
             {
                 ShellManager.Register(_exePath);
-                MessageBox.Show(this, "QuickFile cascading context menu has been successfully registered!\n\nRight-click any image file in File Explorer to see QuickFile.", "QuickFile", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(this, "QuickFile context menus successfully registered!\n\nRight-click any image, audio, video, or PDF file in File Explorer to see QuickFile.", "QuickFile", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             UpdateStatus();
         }

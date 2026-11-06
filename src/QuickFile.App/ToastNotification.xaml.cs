@@ -72,6 +72,14 @@ public partial class ToastNotification : Window
         _timer.Start();
     }
 
+    private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.LeftButton == MouseButtonState.Pressed)
+        {
+            DragMove();
+        }
+    }
+
     private void Window_MouseEnter(object sender, MouseEventArgs e)
     {
         _timer.Stop();

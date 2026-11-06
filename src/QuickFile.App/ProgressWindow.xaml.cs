@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Windows;
+using System.Windows.Input;
 
 namespace QuickFile.App;
 
@@ -15,6 +16,14 @@ public partial class ProgressWindow : Window
         _cts = cts;
         TxtTitle.Text = title;
         TxtFileName.Text = Path.GetFileName(filePath);
+    }
+
+    private void Header_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.LeftButton == MouseButtonState.Pressed)
+        {
+            DragMove();
+        }
     }
 
     public void ReportProgress(double fraction, string status)

@@ -1,5 +1,9 @@
 # QuickFile
 
+<p align="center">
+  <img src="assets/logo.png" width="120" height="120" alt="QuickFile Logo" />
+</p>
+
 > **Quick file actions, right from Windows File Explorer.**
 
 A lightweight, zero-overhead Windows desktop utility that embeds image, audio, video, and PDF operations directly into Windows File Explorer's right-click context menu. Perform conversions, compression, resizing, audio extraction, and PDF manipulation locally and instantly—without launching heavy software suites or keeping background services running.

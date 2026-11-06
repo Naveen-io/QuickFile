@@ -52,18 +52,31 @@ public partial class MiniActionWindow : Window
 
         if (IsImageExt(_ext))
         {
+            TxtFileCategoryIcon.Text = "🖼️";
             _imgInfo = ImageProcessor.GetImageInfo(_filePath);
             TxtFileSpecs.Text = $"{_imgInfo.FormattedSize} • {_imgInfo.Dimensions} • {_imgInfo.Format}";
         }
-        else if (IsAudioExt(_ext) || IsVideoExt(_ext))
+        else if (IsAudioExt(_ext))
         {
+            TxtFileCategoryIcon.Text = "🎵";
             try
             {
                 _mediaInfo = FFmpegHelper.ProbeFile(_filePath);
-                string specs = IsVideoExt(_ext)
-                    ? $"{_mediaInfo.FormattedSize} • {_mediaInfo.Resolution} • {_mediaInfo.FormattedDuration}"
-                    : $"{_mediaInfo.FormattedSize} • {_mediaInfo.FormattedDuration} • {_mediaInfo.ChannelDescription}";
-                TxtFileSpecs.Text = specs;
+                TxtFileSpecs.Text = $"{_mediaInfo.FormattedSize} • {_mediaInfo.FormattedDuration} • {_mediaInfo.ChannelDescription}";
+            }
+            catch
+            {
+                var fi = new FileInfo(_filePath);
+                TxtFileSpecs.Text = $"{FilePathHelper.FormatFileSize(fi.Length)} • {_ext.TrimStart('.').ToUpperInvariant()}";
+            }
+        }
+        else if (IsVideoExt(_ext))
+        {
+            TxtFileCategoryIcon.Text = "🎬";
+            try
+            {
+                _mediaInfo = FFmpegHelper.ProbeFile(_filePath);
+                TxtFileSpecs.Text = $"{_mediaInfo.FormattedSize} • {_mediaInfo.Resolution} • {_mediaInfo.FormattedDuration}";
             }
             catch
             {
@@ -73,6 +86,7 @@ public partial class MiniActionWindow : Window
         }
         else if (_ext == ".pdf")
         {
+            TxtFileCategoryIcon.Text = "📄";
             try
             {
                 _pdfInfo = PdfProcessor.GetPdfInfo(_filePath);
@@ -86,6 +100,7 @@ public partial class MiniActionWindow : Window
         }
         else
         {
+            TxtFileCategoryIcon.Text = "📁";
             var fi = new FileInfo(_filePath);
             TxtFileSpecs.Text = $"{FilePathHelper.FormatFileSize(fi.Length)} • {_ext.TrimStart('.').ToUpperInvariant()}";
         }
@@ -555,6 +570,14 @@ public partial class MiniActionWindow : Window
             catch { }
         }
         Close();
+    }
+
+    private void Header_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (e.LeftButton == System.Windows.Input.MouseButtonState.Pressed)
+        {
+            DragMove();
+        }
     }
 
     private void BtnClose_Click(object sender, RoutedEventArgs e)
